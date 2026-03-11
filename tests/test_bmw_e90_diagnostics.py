@@ -76,7 +76,7 @@ class TestDecoders:
         assert diag._decode_rpm(bytes([0x0C])) == 0.0
 
     def test_decode_percent(self):
-        assert diag._decode_percent(bytes([0xFF])) == pytest.approx(100.0, abs=0.5)
+        assert diag._decode_percent(bytes([0xFF])) == pytest.approx(100.0, abs=0.01)
         assert diag._decode_percent(bytes([0x00])) == 0.0
 
     def test_decode_percent_empty(self):

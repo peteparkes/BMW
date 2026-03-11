@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-BMW E90 320i N46B20B Engine ECU Diagnostics & Data Logging Tool
+BMW E90 320i N46B20B Engine ECU Diagnostic & Data Logging Tool
 ================================================================
 
 A comprehensive Windows-based diagnostic and data logging script for the
@@ -38,6 +38,7 @@ import struct
 import sys
 import textwrap
 import time
+from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Optional CAN / Serial imports – gracefully degrade when not installed so the
@@ -1564,7 +1565,7 @@ def _decode_ascii(data: bytes) -> str:
 
 
 # Map decoder names to functions
-_DECODERS: dict[str, callable] = {
+_DECODERS: dict[str, Callable] = {
     "rpm": _decode_rpm,
     "percent": _decode_percent,
     "percent16": _decode_percent16,
