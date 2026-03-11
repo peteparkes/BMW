@@ -1,0 +1,202 @@
+/* BMW Car Catalog - Styles */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f4f4;
+  color: #222;
+  min-height: 100vh;
+}
+
+header {
+  background: #1c1c1c;
+  color: #fff;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0066cc;
+}
+
+header span {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+main {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  background: #fff;
+  padding: 1.2rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  flex: 1;
+  min-width: 140px;
+}
+
+.filters select {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.results-info {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 1.2rem;
+}
+
+.cars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.car-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+
+.car-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.13);
+}
+
+.car-card-header {
+  background: linear-gradient(135deg, #1c1c1c 60%, #333);
+  color: #fff;
+  padding: 1rem 1.2rem 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.car-series-badge {
+  background: #0066cc;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+.car-card-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.1rem;
+}
+
+.car-card-header .year {
+  font-size: 0.82rem;
+  color: #aaa;
+}
+
+.car-card-body {
+  padding: 1rem 1.2rem;
+}
+
+.car-body-style {
+  display: inline-block;
+  background: #f0f0f0;
+  color: #555;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  margin-bottom: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.car-specs {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.car-specs li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #444;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 0.3rem;
+}
+
+.car-specs li:last-child {
+  border-bottom: none;
+}
+
+.car-specs .spec-label {
+  color: #888;
+  font-size: 0.82rem;
+}
+
+.no-results {
+  text-align: center;
+  color: #888;
+  padding: 3rem 1rem;
+  font-size: 1rem;
+  grid-column: 1 / -1;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem;
+  color: #aaa;
+  font-size: 0.82rem;
+  margin-top: 3rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+@media (max-width: 600px) {
+  header { padding: 0 1rem; }
+  header h1 { font-size: 1.2rem; }
+  main { padding: 0 0.8rem; }
+  .filters { flex-direction: column; }
+}

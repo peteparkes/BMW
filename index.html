@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BMW Car Catalog</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>BMW Car Catalog</h1>
+    <span>2024 Model Year</span>
+  </header>
+
+  <main>
+    <section class="filters" aria-label="Filter options">
+      <label for="filter-series">
+        Series
+        <select id="filter-series"></select>
+      </label>
+      <label for="filter-body">
+        Body Style
+        <select id="filter-body"></select>
+      </label>
+      <label for="filter-year">
+        Year
+        <select id="filter-year"></select>
+      </label>
+    </section>
+
+    <p class="results-info" id="results-count" aria-live="polite"></p>
+
+    <div class="cars-grid" id="cars-grid" role="list"></div>
+  </main>
+
+  <footer>
+    &copy; 2024 BMW Car Catalog &mdash; For informational purposes only.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
