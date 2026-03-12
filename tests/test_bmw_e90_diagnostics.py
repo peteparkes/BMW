@@ -6,6 +6,7 @@ and CLI helpers without requiring any hardware.
 """
 
 import csv
+import logging
 import os
 import sys
 import tempfile
@@ -342,6 +343,84 @@ class TestOfflineDemoClient:
     def test_tester_present(self):
         client = diag.OfflineDemoClient()
         assert client.send_tester_present() is True
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Sensor availability tester
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestSensorAvailability:
+    """Validate the test_sensor_availability function."""
+
+    @pytest.fixture
+    def pydabaus(self):
+        client = diag.OfflineDemoClient()
+        client.connect()
+        return diag.PYDABAUS(client)
+
+    def test_returns_dict_for_all_params(self, pydabaus):
+        results = diag.test_sensor_availability(pydabaus)
+        assert isinstance(results, dict)
+        assert len(results) == diag.TOTAL_PARAMETER_COUNT
+
+    def test_all_available_in_demo(self, pydabaus):
+        """OfflineDemoClient always returns bytes, so all sensors should be available."""
+        results = diag.test_sensor_availability(pydabaus)
+        unavailable = [k for k, v in results.items() if not v["available"]]
+        assert unavailable == [], f"Unexpected unavailable sensors: {unavailable}"
+
+    def test_result_structure(self, pydabaus):
+        results = diag.test_sensor_availability(pydabaus)
+        for name, info in results.items():
+            assert "available" in info, f"Missing 'available' key for {name}"
+            assert "error" in info, f"Missing 'error' key for {name}"
+            assert isinstance(info["available"], bool)
+
+    def test_progress_callback_called(self, pydabaus):
+        calls = []
+
+        def _cb(current, total, name):
+            calls.append((current, total, name))
+
+        diag.test_sensor_availability(pydabaus, progress_callback=_cb)
+        assert len(calls) == diag.TOTAL_PARAMETER_COUNT
+        # First call should be index 1
+        assert calls[0][0] == 1
+        # Last call should be the total count
+        assert calls[-1][0] == diag.TOTAL_PARAMETER_COUNT
+        # Total is always the catalogue size
+        assert all(c[1] == diag.TOTAL_PARAMETER_COUNT for c in calls)
+
+    def test_missing_sensor_logged_as_error(self, pydabaus, caplog):
+        """A client that returns None should trigger an ERROR log entry."""
+
+        class _BrokenClient:
+            is_connected = True
+
+            def read_did(self, did):
+                return None  # simulate no response
+
+            def connect(self):
+                return True
+
+            def disconnect(self):
+                pass
+
+            def send_tester_present(self):
+                return True
+
+        pydabaus_broken = diag.PYDABAUS(_BrokenClient())
+        with caplog.at_level(logging.ERROR, logger="bmw_diag"):
+            results = diag.test_sensor_availability(pydabaus_broken)
+
+        # All should be unavailable
+        unavailable = [k for k, v in results.items() if not v["available"]]
+        assert len(unavailable) == diag.TOTAL_PARAMETER_COUNT
+
+        # At least one ERROR log entry per missing sensor
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert len(error_records) >= diag.TOTAL_PARAMETER_COUNT
 
 
 # ──────────────────────────────────────────────────────────────────────────────

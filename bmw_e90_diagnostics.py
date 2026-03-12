@@ -2331,6 +2331,89 @@ class OfflineDemoClient:
 
 
 # ============================================================================
+# Sensor Availability Testing
+# ============================================================================
+
+
+def test_sensor_availability(
+    pydabaus_inst: "PYDABAUS",
+    progress_callback: Callable | None = None,
+) -> dict[str, dict]:
+    """Probe every parameter in the catalogue and report which sensors respond.
+
+    For each sensor that does **not** respond the function logs an ERROR so
+    operators can review missing hardware / ECU support.
+
+    Args:
+        pydabaus_inst:     An initialised PYDABAUS instance with an active client.
+        progress_callback: Optional callable(current: int, total: int, name: str)
+                           that is invoked after each sensor is tested – useful for
+                           updating a progress bar in a GUI or CLI.
+
+    Returns:
+        A dict mapping each parameter name to::
+
+            {
+                "available": bool,   # True if the ECU returned data
+                "error":     str|None,  # Error description when unavailable
+            }
+
+    Example::
+
+        client = OfflineDemoClient()
+        client.connect()
+        pydabaus = PYDABAUS(client)
+        results = test_sensor_availability(pydabaus)
+        missing = {k: v for k, v in results.items() if not v["available"]}
+    """
+    catalogue = pydabaus_inst.get_all_parameters()
+    total = len(catalogue)
+    results: dict[str, dict] = {}
+
+    for idx, param in enumerate(catalogue):
+        name = param["name"]
+        did = param["did"]
+
+        if progress_callback is not None:
+            progress_callback(idx + 1, total, name)
+
+        try:
+            raw = pydabaus_inst.client.read_did(did)
+        except Exception as exc:  # noqa: BLE001
+            raw = None
+            error_msg = str(exc)
+        else:
+            error_msg = None if raw is not None else f"No response for DID 0x{did:04X}"
+
+        available = raw is not None
+        results[name] = {"available": available, "error": error_msg}
+
+        if not available:
+            logger.error(
+                "SENSOR UNAVAILABLE: %s (DID 0x%04X) – %s",
+                name,
+                did,
+                error_msg or "no data",
+            )
+
+    available_count = sum(1 for v in results.values() if v["available"])
+    missing_count = total - available_count
+    logger.info(
+        "Sensor availability test complete: %d/%d available, %d missing.",
+        available_count,
+        total,
+        missing_count,
+    )
+    if missing_count:
+        logger.error(
+            "%d sensor(s) did not respond. Review the log for SENSOR UNAVAILABLE entries.",
+            missing_count,
+        )
+
+    return results
+
+
+# ============================================================================
 # Entry Point
 # ============================================================================
 
@@ -2416,6 +2499,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run in offline demo mode with simulated ECU data",
     )
+    misc_group.add_argument(
+        "--test-sensors",
+        action="store_true",
+        help="Test which sensors are available and log any that are missing",
+    )
 
     return parser
 
@@ -2448,6 +2536,40 @@ def main() -> int:
 
     # ── PYDABAUS automation layer ─────────────────────────────────────
     pydabaus = PYDABAUS(client)
+
+    # ── Sensor availability test ──────────────────────────────────────
+    if args.test_sensors:
+        print(f"\n{SEPARATOR}")
+        print("  SENSOR AVAILABILITY TEST")
+        print(SEPARATOR)
+
+        def _progress(current, total, name):
+            pct = int(current * 100 / total)
+            bar = "█" * (pct // 5) + "░" * (20 - pct // 5)
+            print(f"\r  [{bar}] {current}/{total}  {name:<50s}", end="", flush=True)
+
+        results = test_sensor_availability(pydabaus, progress_callback=_progress)
+        print()  # newline after progress line
+
+        available = {k for k, v in results.items() if v["available"]}
+        missing = {k: v["error"] for k, v in results.items() if not v["available"]}
+
+        print(f"\n  Total parameters : {len(results)}")
+        print(f"  Available        : {len(available)}")
+        print(f"  Missing / errors : {len(missing)}")
+
+        if missing:
+            print(f"\n{SEPARATOR}")
+            print("  MISSING / UNAVAILABLE SENSORS (logged as errors):")
+            print(SEPARATOR)
+            for name, err in sorted(missing.items()):
+                print(f"  ✗  {name:<50s}  {err or ''}")
+        else:
+            print("\n  ✓ All sensors responded successfully.")
+
+        print(f"\n{SEPARATOR}")
+        client.disconnect()
+        return 0 if not missing else 2
 
     # ── Show parameter catalogue ──────────────────────────────────────
     print_parameter_catalogue()

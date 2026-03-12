@@ -1,2 +1,5 @@
 python-can>=4.2.0
 pyserial>=3.5
+# tkinter is part of the Python standard library on most platforms.
+# On Debian/Ubuntu install with: sudo apt-get install python3-tk
+# On Fedora/RHEL:                sudo dnf install python3-tkinter
