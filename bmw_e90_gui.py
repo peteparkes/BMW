@@ -117,7 +117,7 @@ class SensorAvailabilityTester:
                     )
                 else:
                     self.results[name] = {"available": True, "error": None}
-            except Exception as exc:  # noqa: BLE001
+            except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
                 self.results[name] = {"available": False, "error": str(exc)}
                 logger.error(
                     "SENSOR ERROR: %s (DID 0x%04X) – %s",
@@ -642,7 +642,7 @@ class BmwDiagGUI:
 
             connected = self.client.is_connected
             self.root.after(0, self._on_connected, connected)
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, RuntimeError, TimeoutError, ImportError, AttributeError) as exc:
             self.root.after(0, self._on_connected, False, str(exc))
 
     def _on_connected(self, success: bool, error: str = ""):
@@ -694,14 +694,11 @@ class BmwDiagGUI:
         self._rebuild_dashboard_tiles()
 
     def _apply_filter(self, *_):
-        self._populate_sensor_list(self.filter_text)
-
-    @property
-    def filter_text(self) -> str:
         try:
-            return self._filter_var.get()
-        except Exception:
-            return ""
+            ft = self._filter_var.get()
+        except tk.TclError:
+            ft = ""
+        self._populate_sensor_list(ft)
 
     # ------------------------------------------------------------------
     # Live dashboard refresh
@@ -816,21 +813,10 @@ class BmwDiagGUI:
 
     def _stop_recording(self):
         self._logging_active = False
-        # Interrupt the PYDABAUS logging loop via KeyboardInterrupt simulation
-        # We do this by patching a flag that log_to_csv checks
+        # Clearing selected_params causes PYDABAUS.log_to_csv to return on the
+        # next sweep (it logs a warning and exits when the list is empty).
         if self.pydabaus:
-            # log_to_csv uses a duration_s check; forcing selected_params empty
-            # makes the next check exit, but the cleanest approach is to stop
-            # via a threading.Event.  Since we own log_to_csv, we just wait for
-            # the thread to be done on next iteration (it checks duration=0 continuously).
-            # The safest cross-platform way: replace the CSV filepath to trigger stop.
-            pass
-
-        # The log thread is daemon – it will exit when PYDABAUS finishes (Ctrl+C
-        # is simulated by clearing selected_params which makes it return immediately).
-        if self.pydabaus:
-            _saved = self.pydabaus.selected_params
-            self.pydabaus.selected_params = []  # causes log_to_csv to return
+            self.pydabaus.selected_params = []
 
         self._start_btn.config(state=tk.NORMAL)
         self._stop_btn.config(state=tk.DISABLED)

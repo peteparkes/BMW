@@ -71,7 +71,7 @@ PACKAGES=("python-can>=4.2.0" "pyserial>=3.5")
 
 for pkg in "${PACKAGES[@]}"; do
     pkg_name="${pkg%%[>=<]*}"
-    if "$PYTHON" -c "import importlib.util; assert importlib.util.find_spec('${pkg_name//-/_}') or importlib.util.find_spec('${pkg_name}')" &>/dev/null 2>&1; then
+    if "$PYTHON" -c "import importlib.util; assert importlib.util.find_spec('${pkg_name//-/_}') or importlib.util.find_spec('${pkg_name}')" &>/dev/null; then
         success "Package '${pkg_name}' already installed."
     else
         info "Installing '${pkg}'…"
@@ -87,7 +87,7 @@ success "All Python packages installed."
 # ---------------------------------------------------------------------------
 # 3. Ensure tkinter is available
 # ---------------------------------------------------------------------------
-if ! "$PYTHON" -c "import tkinter" &>/dev/null 2>&1; then
+if ! "$PYTHON" -c "import tkinter" &>/dev/null; then
     warn "tkinter not found – attempting to install…"
     OS="$(uname -s)"
     if [[ "$OS" == "Linux" ]]; then

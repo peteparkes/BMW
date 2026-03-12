@@ -2379,7 +2379,7 @@ def test_sensor_availability(
 
         try:
             raw = pydabaus_inst.client.read_did(did)
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
             raw = None
             error_msg = str(exc)
         else:
