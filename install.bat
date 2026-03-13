@@ -93,15 +93,16 @@ set "DESKTOP=%USERPROFILE%\Desktop"
 set "SHORTCUT=%DESKTOP%\BMW E90 Diagnostics.lnk"
 
 echo [INFO] Creating desktop shortcut...
-
+rem Note: [char]34 is used to embed double-quote characters inside the
+rem Arguments value because cmd.exe ^-continuation forbids nested quotes.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ws = New-Object -ComObject WScript.Shell; ^
-     $sc = $ws.CreateShortcut('%SHORTCUT%'); ^
-     $sc.TargetPath = '%PYTHON%'; ^
-     $sc.Arguments = '\""%GUI_SCRIPT%\"" --demo'; ^
-     $sc.WorkingDirectory = '%SCRIPT_DIR%'; ^
-     $sc.Description = 'BMW E90 N46B20B ECU Diagnostics Dashboard'; ^
-     $sc.Save()"
+    "$ws = New-Object -ComObject WScript.Shell;" ^
+    "$sc = $ws.CreateShortcut('%SHORTCUT%');" ^
+    "$sc.TargetPath = '%PYTHON%';" ^
+    "$sc.Arguments = ([char]34 + '%GUI_SCRIPT%' + [char]34 + ' --demo');" ^
+    "$sc.WorkingDirectory = '%SCRIPT_DIR%';" ^
+    "$sc.Description = 'BMW E90 N46B20B ECU Diagnostics Dashboard';" ^
+    "$sc.Save()"
 
 if %errorlevel% neq 0 (
     echo [WARN] Could not create desktop shortcut via PowerShell.

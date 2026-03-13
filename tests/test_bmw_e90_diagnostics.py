@@ -444,3 +444,34 @@ class TestProtocolConstants:
         assert diag.UDS_READ_DATA_BY_IDENTIFIER == 0x22
         assert diag.UDS_TESTER_PRESENT == 0x3E
         assert diag.UDS_DIAGNOSTIC_SESSION_CONTROL == 0x10
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Serial port listing utility
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestListSerialPorts:
+    """Verify the list_serial_ports helper returns well-formed data."""
+
+    def test_returns_list(self):
+        result = diag.list_serial_ports()
+        assert isinstance(result, list)
+
+    def test_entry_keys(self):
+        """Every entry must contain the expected metadata keys."""
+        expected_keys = {"device", "description", "vid_pid", "is_ftdi"}
+        for entry in diag.list_serial_ports():
+            assert expected_keys.issubset(entry.keys()), (
+                f"Entry {entry.get('device')} missing keys: "
+                f"{expected_keys - entry.keys()}"
+            )
+
+    def test_is_ftdi_is_bool(self):
+        for entry in diag.list_serial_ports():
+            assert isinstance(entry["is_ftdi"], bool)
+
+    def test_no_serial_returns_empty(self, monkeypatch):
+        """When pyserial is unavailable the function returns an empty list."""
+        monkeypatch.setattr(diag, "SERIAL_AVAILABLE", False)
+        assert diag.list_serial_ports() == []
