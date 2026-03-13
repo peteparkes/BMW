@@ -812,9 +812,13 @@ class BmwDiagGUI:
         self._set_status("Disconnected. Use the toolbar to reconnect.")
         self._update_tiles()
 
+    def _is_client_connected(self) -> bool:
+        """Return True if the current client exists and reports connected."""
+        return bool(self.client and getattr(self.client, "is_connected", False))
+
     def _auto_detect_connect(self):
         """Scan for FTDI K+DCAN cables and connect to the first one found."""
-        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+        if self._is_client_connected():
             self._disconnect()
 
         self._set_status("Scanning for K+DCAN cables…")
@@ -863,7 +867,7 @@ class BmwDiagGUI:
             )
             return
 
-        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+        if self._is_client_connected():
             self._disconnect()
 
         self._is_demo = False
@@ -874,7 +878,7 @@ class BmwDiagGUI:
 
     def _start_demo_mode(self):
         """Switch to offline demo mode without restarting the application."""
-        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+        if self._is_client_connected():
             self._disconnect()
 
         self._is_demo = True
@@ -884,11 +888,6 @@ class BmwDiagGUI:
     def _refresh_port_list(self):
         """Refresh the COM port dropdown with currently available ports."""
         ports = diag.list_serial_ports()
-        display_values = []
-        for p in ports:
-            tag = " [K+DCAN]" if p["is_ftdi"] else ""
-            display_values.append(f"{p['device']}{tag}")
-
         self._port_combo["values"] = [p["device"] for p in ports]
 
         if ports and not self._port_var.get():
