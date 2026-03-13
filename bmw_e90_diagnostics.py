@@ -1911,6 +1911,38 @@ class BMWDiagClient:
         raise RuntimeError("No serial ports found. Is the diagnostic cable connected?")
 
 
+def list_serial_ports() -> list[dict]:
+    """Return a list of available serial ports with metadata.
+
+    Each entry is a dict with keys:
+      - device:      port name (e.g. 'COM3' or '/dev/ttyUSB0')
+      - description: human-readable description
+      - vid_pid:     'VVVV:PPPP' USB vendor/product IDs, or ''
+      - is_ftdi:     True when the port looks like an FTDI K+DCAN cable
+
+    Returns an empty list when *pyserial* is not installed or no ports exist.
+    """
+    if not SERIAL_AVAILABLE:
+        return []
+
+    result: list[dict] = []
+    for p in serial.tools.list_ports.comports():
+        desc = p.description or ""
+        vid_pid = f"{p.vid:04X}:{p.pid:04X}" if p.vid and p.pid else ""
+        desc_lower = desc.lower()
+        is_ftdi = any(
+            kw in desc_lower
+            for kw in ("ft232", "ftdi", "k+dcan", "bmw", "inpa", "usb-serial")
+        ) or vid_pid in ("0403:6001", "0403:6015")
+        result.append({
+            "device": p.device,
+            "description": desc,
+            "vid_pid": vid_pid,
+            "is_ftdi": is_ftdi,
+        })
+    return result
+
+
 # ============================================================================
 # PYDABAUS – BMW Diagnostic Automation Bridge / Abstraction Utility Service
 # ============================================================================

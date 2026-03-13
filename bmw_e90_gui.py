@@ -191,6 +191,7 @@ class BmwDiagGUI:
         self._sensor_vars: dict[str, tk.BooleanVar] = {}
         self._value_labels: dict[str, tk.Label] = {}
         self._tile_frames: dict[str, tk.Frame] = {}
+        self._is_demo = bool(args.demo)
 
         self._build_ui()
         self._connect()
@@ -207,6 +208,9 @@ class BmwDiagGUI:
 
         # ── Title bar ──────────────────────────────────────────────────
         self._build_title_bar()
+
+        # ── Connection toolbar ─────────────────────────────────────────
+        self._build_connection_bar()
 
         # ── Main content area ──────────────────────────────────────────
         content = tk.Frame(self.root, bg=C_BG)
@@ -249,6 +253,115 @@ class BmwDiagGUI:
             font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
         )
         self._conn_badge.pack(side=tk.RIGHT, padx=14, pady=14)
+
+    def _build_connection_bar(self):
+        """Build the connection management toolbar below the title bar."""
+        bar = tk.Frame(self.root, bg=C_PANEL, height=40)
+        bar.pack(fill=tk.X, padx=6, pady=(4, 0))
+        bar.pack_propagate(False)
+
+        # ── Disconnect button ──────────────────────────────────────────
+        self._disconnect_btn = tk.Button(
+            bar,
+            text="⏏ Disconnect",
+            command=self._disconnect,
+            bg=C_RED,
+            fg="white",
+            relief=tk.FLAT,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+            padx=8,
+            cursor="hand2",
+            activebackground="#c0304a",
+        )
+        self._disconnect_btn.pack(side=tk.LEFT, padx=(6, 4), pady=6)
+
+        # ── Separator ──────────────────────────────────────────────────
+        sep = tk.Frame(bar, bg=C_TEXT_DIM, width=1)
+        sep.pack(side=tk.LEFT, fill=tk.Y, padx=6, pady=8)
+
+        # ── Auto-detect & Connect ──────────────────────────────────────
+        self._auto_detect_btn = tk.Button(
+            bar,
+            text="⚡ Auto-Detect K+DCAN",
+            command=self._auto_detect_connect,
+            bg=C_GREEN,
+            fg="#000000",
+            relief=tk.FLAT,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+            padx=8,
+            cursor="hand2",
+            activebackground="#00b090",
+        )
+        self._auto_detect_btn.pack(side=tk.LEFT, padx=4, pady=6)
+
+        # ── Separator ──────────────────────────────────────────────────
+        sep2 = tk.Frame(bar, bg=C_TEXT_DIM, width=1)
+        sep2.pack(side=tk.LEFT, fill=tk.Y, padx=6, pady=8)
+
+        # ── Manual port selection ──────────────────────────────────────
+        tk.Label(
+            bar, text="COM Port:", bg=C_PANEL, fg=C_TEXT_DIM,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+        ).pack(side=tk.LEFT, padx=(4, 2), pady=6)
+
+        self._port_var = tk.StringVar()
+        self._port_combo = ttk.Combobox(
+            bar,
+            textvariable=self._port_var,
+            width=18,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+            state="normal",
+        )
+        self._port_combo.pack(side=tk.LEFT, padx=2, pady=6)
+
+        self._refresh_ports_btn = tk.Button(
+            bar,
+            text="↻",
+            command=self._refresh_port_list,
+            bg=C_BTN,
+            fg=C_TEXT,
+            relief=tk.FLAT,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+            padx=4,
+            cursor="hand2",
+            activebackground=C_BTN_ACTIVE,
+        )
+        self._refresh_ports_btn.pack(side=tk.LEFT, padx=2, pady=6)
+
+        self._manual_connect_btn = tk.Button(
+            bar,
+            text="Connect",
+            command=self._manual_connect,
+            bg=C_BTN,
+            fg=C_TEXT,
+            relief=tk.FLAT,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+            padx=8,
+            cursor="hand2",
+            activebackground=C_BTN_ACTIVE,
+        )
+        self._manual_connect_btn.pack(side=tk.LEFT, padx=4, pady=6)
+
+        # ── Demo mode button ───────────────────────────────────────────
+        sep3 = tk.Frame(bar, bg=C_TEXT_DIM, width=1)
+        sep3.pack(side=tk.LEFT, fill=tk.Y, padx=6, pady=8)
+
+        self._demo_btn = tk.Button(
+            bar,
+            text="Demo Mode",
+            command=self._start_demo_mode,
+            bg=C_YELLOW,
+            fg="#000000",
+            relief=tk.FLAT,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+            padx=8,
+            cursor="hand2",
+            activebackground="#d4a810",
+        )
+        self._demo_btn.pack(side=tk.LEFT, padx=4, pady=6)
+
+        # Populate port list on startup
+        self._refresh_port_list()
 
     def _build_left_panel(self, parent):
         # Header
@@ -612,23 +725,27 @@ class BmwDiagGUI:
     # Connection
     # ------------------------------------------------------------------
 
+    _IFACE_MAP = {
+        "pcan": "pcan", "kvaser": "kvaser", "vector": "vector",
+        "ixxat": "ixxat", "socketcan": "socketcan",
+        "slcan": "slcan", "serial": "slcan", "kdcan": "slcan",
+    }
+
     def _connect(self):
         """Connect to ECU (or start demo mode) in a background thread."""
         self._set_status("Connecting…")
+        self._set_connection_buttons_busy(True)
         threading.Thread(target=self._do_connect, daemon=True).start()
 
     def _do_connect(self):
         try:
-            if self.args.demo:
+            if self._is_demo:
                 self.client = diag.OfflineDemoClient()
                 self.client.connect()
             else:
-                iface_map = {
-                    "pcan": "pcan", "kvaser": "kvaser", "vector": "vector",
-                    "ixxat": "ixxat", "socketcan": "socketcan",
-                    "slcan": "slcan", "serial": "slcan", "kdcan": "slcan",
-                }
-                iface = iface_map.get(self.args.interface.lower(), self.args.interface)
+                iface = self._IFACE_MAP.get(
+                    self.args.interface.lower(), self.args.interface
+                )
                 self.client = diag.BMWDiagClient(
                     interface=iface,
                     channel=self.args.channel,
@@ -646,23 +763,155 @@ class BmwDiagGUI:
             self.root.after(0, self._on_connected, False, str(exc))
 
     def _on_connected(self, success: bool, error: str = ""):
+        self._set_connection_buttons_busy(False)
         if success:
-            label = "DEMO MODE" if self.args.demo else "CONNECTED"
+            label = "DEMO MODE" if self._is_demo else "CONNECTED"
             self._conn_badge.config(text=f" ● {label} ", bg=C_GREEN, fg="#000000")
+            port_info = ""
+            if not self._is_demo and self.client and hasattr(self.client, "port"):
+                port_info = f" via {self.client.port}" if self.client.port else ""
             self._set_status(
-                f"Connected to MSV70 ECU | {diag.TOTAL_PARAMETER_COUNT} parameters available"
+                f"Connected to MSV70 ECU{port_info} | "
+                f"{diag.TOTAL_PARAMETER_COUNT} parameters available"
             )
         else:
             self._conn_badge.config(text=" ● DISCONNECTED ", bg=C_RED, fg="white")
             self._set_status(f"Connection failed: {error or 'Check cable and ignition'}")
             messagebox.showerror(
                 "Connection Failed",
-                f"Could not connect to the ECU.\n\n{error or 'Check cable, ignition, and interface settings.'}\n\nTip: use --demo flag for offline mode.",
+                f"Could not connect to the ECU.\n\n"
+                f"{error or 'Check cable, ignition, and interface settings.'}\n\n"
+                f"Tip: use the Auto-Detect button or Demo Mode button.",
             )
             return
 
         # Start live refresh loop
         self.root.after(REFRESH_MS, self._refresh_dashboard)
+
+    # ------------------------------------------------------------------
+    # Connection management actions
+    # ------------------------------------------------------------------
+
+    def _disconnect(self):
+        """Disconnect the current client (demo or live) and reset the UI."""
+        if self._logging_active:
+            self._stop_recording()
+
+        if self.client:
+            try:
+                self.client.disconnect()
+            except Exception:
+                pass
+        self.client = None
+        self.pydabaus = None
+        self.tester = None
+        self._is_demo = False
+        self._latest_row = {}
+
+        self._conn_badge.config(text=" ● DISCONNECTED ", bg=C_RED, fg="white")
+        self._set_status("Disconnected. Use the toolbar to reconnect.")
+        self._update_tiles()
+
+    def _auto_detect_connect(self):
+        """Scan for FTDI K+DCAN cables and connect to the first one found."""
+        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+            self._disconnect()
+
+        self._set_status("Scanning for K+DCAN cables…")
+        self._is_demo = False
+
+        ports = diag.list_serial_ports()
+        ftdi_ports = [p for p in ports if p["is_ftdi"]]
+
+        if ftdi_ports:
+            chosen = ftdi_ports[0]
+            self.args.port = chosen["device"]
+            self.args.interface = "kdcan"
+            self._port_var.set(chosen["device"])
+            self._set_status(
+                f"Found K+DCAN cable on {chosen['device']} "
+                f"({chosen['description']}) – connecting…"
+            )
+        elif ports:
+            chosen = ports[0]
+            self.args.port = chosen["device"]
+            self.args.interface = "kdcan"
+            self._port_var.set(chosen["device"])
+            self._set_status(
+                f"No K+DCAN cable identified; trying {chosen['device']} "
+                f"({chosen['description']})…"
+            )
+        else:
+            self._set_status("No serial ports found. Is the cable plugged in?")
+            messagebox.showwarning(
+                "No Ports Found",
+                "No serial ports were detected.\n\n"
+                "Please connect your FTDI K+DCAN cable and try again.\n"
+                "You can also type a COM port manually.",
+            )
+            return
+
+        self._connect()
+
+    def _manual_connect(self):
+        """Connect using the COM port entered in the toolbar."""
+        port = self._port_var.get().strip()
+        if not port:
+            messagebox.showwarning(
+                "No Port Specified",
+                "Please enter or select a COM port (e.g. COM3).",
+            )
+            return
+
+        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+            self._disconnect()
+
+        self._is_demo = False
+        self.args.port = port
+        self.args.interface = "kdcan"
+        self._set_status(f"Connecting via {port}…")
+        self._connect()
+
+    def _start_demo_mode(self):
+        """Switch to offline demo mode without restarting the application."""
+        if self.client and (self.client.is_connected if hasattr(self.client, "is_connected") else False):
+            self._disconnect()
+
+        self._is_demo = True
+        self._set_status("Starting demo mode…")
+        self._connect()
+
+    def _refresh_port_list(self):
+        """Refresh the COM port dropdown with currently available ports."""
+        ports = diag.list_serial_ports()
+        display_values = []
+        for p in ports:
+            tag = " [K+DCAN]" if p["is_ftdi"] else ""
+            display_values.append(f"{p['device']}{tag}")
+
+        self._port_combo["values"] = [p["device"] for p in ports]
+
+        if ports and not self._port_var.get():
+            ftdi = [p for p in ports if p["is_ftdi"]]
+            if ftdi:
+                self._port_var.set(ftdi[0]["device"])
+            else:
+                self._port_var.set(ports[0]["device"])
+
+    def _set_connection_buttons_busy(self, busy: bool):
+        """Enable/disable connection toolbar buttons during connect/disconnect."""
+        state = tk.DISABLED if busy else tk.NORMAL
+        for btn in (
+            self._disconnect_btn,
+            self._auto_detect_btn,
+            self._manual_connect_btn,
+            self._demo_btn,
+            self._refresh_ports_btn,
+        ):
+            try:
+                btn.config(state=state)
+            except tk.TclError:
+                pass
 
     # ------------------------------------------------------------------
     # Sensor selection helpers
