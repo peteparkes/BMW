@@ -6,16 +6,27 @@ Built around the **PYDABAUS** (Python Diagnostic Automation Bridge / Abstraction
 
 ---
 
+## Screenshot
+
+![BMW E90 Diagnostics Dashboard](https://github.com/user-attachments/assets/cb7759ee-4893-45e3-89b8-3a6767daa277)
+
+*Live dashboard in demo mode – all 127 ECU parameters displayed as real-time tiles.*
+
+---
+
 ## Features
 
 | Feature | Description |
 |---|---|
-| **Full parameter catalogue** | **120+ ECU parameters** covering every major subsystem |
-| **Interactive selection** | Log **all** parameters, pick by **category**, or choose **individual** parameters |
-| **Real-time CSV logging** | Timestamped data at configurable rates (default 100 ms) |
-| **Live console display** | Key metrics (RPM, coolant, speed, load, throttle) shown in real time |
+| **ISTA-style GUI dashboard** | Dark-theme graphical interface with live sensor tiles, sensor selection panel, and CSV recording controls |
+| **Full parameter catalogue** | **127 ECU parameters** covering every major subsystem |
+| **Interactive selection** | Log **all** parameters, filter by keyword, or pick **individual** parameters via checkboxes |
+| **Real-time dashboard** | Values refresh every 250 ms with colour-coded live tile display |
+| **CSV recording** | One-click start/stop recording to a timestamped CSV file |
+| **Sensor availability test** | Tests all 127 sensors; logs missing ones as errors for review |
 | **Offline demo mode** | Test the tool without hardware using simulated ECU data |
 | **Auto-detect serial port** | Automatically finds BMW K+DCAN / FTDI cables on Windows |
+| **Install script** | Creates a desktop shortcut; installs missing packages automatically |
 | **Multiple CAN interfaces** | PCAN, Kvaser, Vector, IXXAT, SocketCAN, SLCAN/K+DCAN |
 
 ### Parameter categories
@@ -68,22 +79,53 @@ pip install -r requirements.txt
 Required packages:
 - `python-can` – CAN bus communication
 - `pyserial` – Serial port detection for K+DCAN cables
+- `tkinter` – GUI toolkit (standard library; see `requirements.txt` for OS-specific install notes)
+
+---
+
+## Installation
+
+### Automated (recommended)
+
+```bash
+# Linux / macOS
+chmod +x install.sh && ./install.sh
+
+# Windows – double-click install.bat
+```
+
+The installer:
+1. Detects Python 3.10+
+2. Installs `python-can` and `pyserial` (upgrades if outdated)
+3. Installs `tkinter` if missing (Linux only – built-in on Windows/macOS)
+4. Creates a **desktop shortcut** to launch the GUI
 
 ---
 
 ## Quick start
 
-### 1. Install dependencies
+### GUI Dashboard (recommended)
 
 ```bash
-pip install -r requirements.txt
+# Demo mode – no hardware needed (desktop shortcut also uses this)
+python bmw_e90_gui.py --demo
+
+# Real hardware – K+DCAN cable on COM3
+python bmw_e90_gui.py --interface kdcan --port COM3
+
+# Real hardware – PCAN adapter
+python bmw_e90_gui.py --interface pcan
 ```
 
-### 2. Connect your diagnostic cable
+Once the GUI opens:
 
-Plug the K+DCAN cable into the OBD-II port (under the dashboard) and the USB end into your Windows PC.
+1. **Select sensors** using the checkboxes in the left panel (use **All** / **None** / filter box)
+2. Watch live values update on the dashboard tiles
+3. Click **▶ Start Recording** to save data to a CSV file
+4. Click **■ Stop Recording** to stop
+5. Click **Test Sensors** to probe all 127 ECU parameters and review any that are unavailable
 
-### 3. Run the tool
+### CLI Tool
 
 ```bash
 # Interactive mode – lists all parameters and asks what to log
@@ -100,6 +142,9 @@ python bmw_e90_diagnostics.py --demo --log-all --duration 10
 
 # Just list all available parameters
 python bmw_e90_diagnostics.py --list-params
+
+# Test which sensors respond (logs missing sensors as errors)
+python bmw_e90_diagnostics.py --demo --test-sensors
 ```
 
 ### 4. View the log
@@ -114,7 +159,40 @@ Timestamp,Engine_RPM,Coolant_Temperature,Vehicle_Speed,...
 
 ---
 
+## Sensor Availability Test
+
+The tool can probe every sensor in the catalogue and report which ones respond:
+
+```bash
+# Via CLI
+python bmw_e90_diagnostics.py --demo --test-sensors
+
+# Via GUI
+# Click "Test Sensors" in the sensor selection panel
+```
+
+Any sensor that does **not** respond is logged as an `ERROR`:
+
+```
+[ERROR] SENSOR UNAVAILABLE: Transmission_Oil_Temperature (DID 0x0205) – No response for DID 0x0205
+[ERROR] 1 sensor(s) did not respond. Review the log for SENSOR UNAVAILABLE entries.
+```
+
+---
+
 ## Command-line options
+
+### bmw_e90_gui.py
+
+```
+--demo             Run in offline demo mode with simulated ECU data
+--interface, -i    CAN interface type (default: pcan)
+--channel, -c      CAN channel (default: PCAN_USBBUS1)
+--port, -p         Serial port for K+DCAN cable (e.g. COM3)
+--bitrate, -b      CAN bus bitrate (default: 500000)
+```
+
+### bmw_e90_diagnostics.py
 
 ```
 Connection:
@@ -131,6 +209,7 @@ Logging:
 
 Miscellaneous:
   --list-params     Print all available parameters and exit
+  --test-sensors    Test which sensors respond; log missing ones as errors
   --demo            Run in offline demo mode with simulated ECU data
 ```
 
@@ -140,6 +219,9 @@ Miscellaneous:
 
 ```
 ┌─────────────────────────────────────────────┐
+│           GUI Dashboard (tkinter)            │
+│  (sensor selection, live tiles, recording)  │
+├─────────────────────────────────────────────┤
 │              Interactive CLI                 │
 │  (parameter selection, live display, CSV)    │
 ├─────────────────────────────────────────────┤
